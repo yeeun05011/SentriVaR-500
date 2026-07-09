@@ -16,11 +16,23 @@ import requests
 # ────────────────────────────────
 
 def fetch_prices(tickers, start_date="2020-01-01"):
-    """Fetch adjusted close prices for the given tickers."""
-    df = yf.download(tickers, start=start_date, auto_adjust=True, progress=False)["Close"]
-    if isinstance(df, pd.Series):
-        df = df.to_frame(name=tickers[0])
-    return df.dropna()
+    """Fetch adjusted close prices for the given tickers, skipping invalid ones."""
+    valid_data = {}
+
+    for t in tickers:
+        try:
+            df = yf.download(t, start=start_date, auto_adjust=True, progress=False)["Close"]
+            if not df.empty and df.notna().sum() > 0:
+                valid_data[t] = df
+        except Exception:
+            continue
+
+    if not valid_data:
+        return pd.DataFrame()
+
+    result = pd.concat(valid_data, axis=1)
+    result.columns = list(valid_data.keys())
+    return result.dropna()
 
 
 def fetch_macro(start_date="2020-01-01"):
