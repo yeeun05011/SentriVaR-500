@@ -4,6 +4,10 @@
 
 Traditional Value at Risk (VaR) is backward-looking: it measures risk from historical price data alone, which means it tends to *underestimate* danger right when markets are turning — the "tail risk" problem. SentriVaR-500 addresses this by fusing macro, market, and news signals into a single adaptive risk score whose weighting itself changes with the market regime, then validates the approach against three real market shocks from 2024–2026.
 
+![Streamlit app](assets/streamlit_app.png)
+
+![Copula risk amplification during the 2020 COVID crash](assets/copula_risk.png)
+
 ---
 
 ## What it does
