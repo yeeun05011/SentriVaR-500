@@ -21,9 +21,21 @@ def fetch_prices(tickers, start_date="2020-01-01"):
 
     for t in tickers:
         try:
-            df = yf.download(t, start=start_date, auto_adjust=True, progress=False)["Close"]
-            if not df.empty and df.notna().sum() > 0:
-                valid_data[t] = df
+            raw = yf.download(t, start=start_date, auto_adjust=True, progress=False)
+
+            if raw.empty:
+                continue
+
+            # Handle both flat and MultiIndex column structures
+            if isinstance(raw.columns, pd.MultiIndex):
+                close = raw["Close"][t] if t in raw["Close"].columns else raw["Close"].iloc[:, 0]
+            else:
+                close = raw["Close"]
+
+            close = close.dropna()
+            if len(close) > 0:
+                valid_data[t] = close
+
         except Exception:
             continue
 
