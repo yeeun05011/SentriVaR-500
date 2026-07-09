@@ -21,7 +21,7 @@ Traditional Value at Risk (VaR) is backward-looking: it measures risk from histo
 
 An interactive version of this system is deployed with Streamlit — enter any tickers (not limited to the ones used in the notebooks) and get a live risk analysis:
 
-**[Live app link — add after deploying]**
+**[Live app →](https://sentrivar-500-7wjxew8z8yhhrad5ruidgw.streamlit.app/)**
 
 The app (`app/app.py`, backed by `app/risk_engine.py`) re-runs the full pipeline — regime detection, sentiment, Copula amplification, idiosyncratic risk, and allocation — on whatever tickers the user enters, refitting the HMM and pulling fresh data each time. News sentiment in the live app uses a fast keyword-based scorer instead of FinBERT, trading a small amount of accuracy for near-instant response time.
 
