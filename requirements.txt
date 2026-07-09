@@ -12,4 +12,4 @@ matplotlib>=3.7
 requests>=2.30
 python-dotenv>=1.0
 jupyterlab>=4.0
- 
+ streamlit>=1.30
