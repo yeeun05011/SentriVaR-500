@@ -11,9 +11,7 @@ from sklearn.preprocessing import StandardScaler
 import requests
 
 
-# ────────────────────────────────
 # 1. Data collection
-# ────────────────────────────────
 
 def fetch_prices(tickers, start_date="2020-01-01"):
     """Fetch adjusted close prices for the given tickers, skipping invalid ones."""
@@ -56,9 +54,7 @@ def fetch_macro(start_date="2020-01-01"):
     return macro.dropna()
 
 
-# ────────────────────────────────
 # 2. Risk metrics (VaR, CVaR, Sharpe, MDD)
-# ────────────────────────────────
 
 def calculate_risk_metrics(return_series, confidence=0.95):
     """Calculate VaR, CVaR, Sharpe ratio, and Max Drawdown for a single asset."""
@@ -78,9 +74,7 @@ def calculate_risk_metrics(return_series, confidence=0.95):
         "MDD": round(mdd, 4)
     }
 
-# ────────────────────────────────
 # 3. HMM regime detection
-# ────────────────────────────────
 
 REGIME_LABELS = {0: "Normal", 1: "Elevated", 2: "Crisis"}
 
@@ -126,9 +120,7 @@ def detect_regime(returns, macro, ticker, n_components=3, smooth_window=30):
 
     return state_series
 
-# ────────────────────────────────
 # 4. News collection and keyword-based sentiment
-# ────────────────────────────────
 
 POSITIVE_WORDS = [
     "beat", "beats", "surge", "surges", "rally", "record", "growth",
@@ -191,9 +183,7 @@ def keyword_sentiment(headlines):
 
     return round(np.mean(scores), 4)
 
-# ────────────────────────────────
 # 5. Sector correlation risk
-# ────────────────────────────────
 
 def correlation_risk(returns_df, window=30):
     """
@@ -211,9 +201,7 @@ def correlation_risk(returns_df, window=30):
     return round(float(avg_corr), 4)
 
 
-# ────────────────────────────────
 # 6. Copula-inspired non-linear risk amplification
-# ────────────────────────────────
 
 def copula_risk_amplifier(risk_score, regime, vix, vix_mean=20.0):
     """
@@ -232,9 +220,7 @@ def copula_risk_amplifier(risk_score, regime, vix, vix_mean=20.0):
         return min(1.0, risk_score * tail_amplification)
 
 
-# ────────────────────────────────
 # 7. Combined multi-signal risk score
-# ────────────────────────────────
 
 def calculate_combined_risk_score(sentiment_score, vix, port_vol, spread, regime):
     """
@@ -260,9 +246,8 @@ def calculate_combined_risk_score(sentiment_score, vix, port_vol, spread, regime
     )
     return round(min(score, 1.0), 4)
 
-# ────────────────────────────────
+
 # 8. Idiosyncratic risk (analyst ratings, earnings, insider activity)
-# ────────────────────────────────
 
 def get_analyst_risk(ticker):
     """Analyst rating risk score based on aggregate buy/sell recommendations."""
@@ -347,9 +332,7 @@ def get_idiosyncratic_risk(ticker):
     return round(combined, 4)
 
 
-# ────────────────────────────────
 # 9. Dynamic asset allocation
-# ────────────────────────────────
 
 def dynamic_allocation(portfolio_risk, idiosyncratic_risk, regime):
     """
@@ -379,3 +362,38 @@ def dynamic_allocation(portfolio_risk, idiosyncratic_risk, regime):
     final_weights["CASH"] = round(cash_ratio, 4)
 
     return combined_risk, final_weights
+
+# 10. Risk score explainability (exact contribution decomposition)
+
+def explain_risk_score(sentiment_score, vix, port_vol, spread, regime):
+    """
+    Decompose the combined risk score into per-signal contributions.
+    Since calculate_combined_risk_score is a weighted linear combination,
+    this decomposition is exact (equivalent to Shapley values for a
+    linear/additive model) rather than an approximation.
+    """
+    vix_norm = min(vix / 80, 1.0)
+    sentiment_norm = (1 - sentiment_score) / 2
+    spread_risk = 1 if spread < 0 else 0
+    vol_term = abs(port_vol) * 10
+
+    if regime == 0:
+        weights = {"Sentiment": 0.40, "VIX": 0.25, "Volatility": 0.25, "Spread": 0.10}
+    elif regime == 1:
+        weights = {"Sentiment": 0.25, "VIX": 0.35, "Volatility": 0.25, "Spread": 0.15}
+    else:
+        weights = {"Sentiment": 0.15, "VIX": 0.45, "Volatility": 0.30, "Spread": 0.10}
+
+    raw_values = {
+        "Sentiment": sentiment_norm,
+        "VIX": vix_norm,
+        "Volatility": vol_term,
+        "Spread": spread_risk,
+    }
+
+    contributions = {
+        signal: round(weights[signal] * raw_values[signal], 4)
+        for signal in weights
+    }
+
+    return contributions

@@ -1,4 +1,3 @@
-# app.py
 # SentriVaR-500 — interactive multi-signal portfolio risk dashboard
 
 import streamlit as st
@@ -11,7 +10,7 @@ from risk_engine import (
     fetch_prices, fetch_macro, calculate_risk_metrics,
     detect_regime, REGIME_LABELS, fetch_news, keyword_sentiment,
     correlation_risk, copula_risk_amplifier, calculate_combined_risk_score,
-    get_idiosyncratic_risk, dynamic_allocation
+    get_idiosyncratic_risk, dynamic_allocation, explain_risk_score
 )
 
 st.set_page_config(page_title="SentriVaR-500", layout="wide")
@@ -184,6 +183,18 @@ try:
         st.warning(f"Caution — regime: {regime_label}")
     else:
         st.success(f"Stable — regime: {regime_label}")
+        
+    # Explainability: exact contribution decomposition
+    contributions = explain_risk_score(avg_sentiment, current_vix, port_vol, current_spread, current_regime)
+    contrib_df = pd.Series(contributions, name="Contribution").sort_values(ascending=False)
+
+    st.subheader("What's driving this score?")
+    st.bar_chart(contrib_df)
+    st.caption(
+        "Exact decomposition of the risk score by signal (weights shift by regime). "
+        "Since the underlying model is a weighted linear combination, this is an exact "
+        "contribution breakdown rather than an approximation."
+    )
 
 except Exception as e:
     st.error(f"Could not compute combined risk score: {e}")
@@ -222,3 +233,5 @@ try:
 
 except Exception as e:
     st.error(f"Could not compute dynamic allocation: {e}")
+
+    
