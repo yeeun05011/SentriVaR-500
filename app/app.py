@@ -21,19 +21,21 @@ NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 st.title("SentriVaR-500")
 st.caption("Adaptive multi-signal portfolio risk system with regime-aware weighting")
 
-# ─────────────────────────
 # Sidebar — user input
-# ─────────────────────────
 st.sidebar.header("Portfolio input")
 tickers_input = st.sidebar.text_input(
     "Enter tickers (comma-separated)",
     value="AAPL, MSFT, GOOGL, JPM"
 )
+
 run_button = st.sidebar.button("Run analysis", type="primary")
 
 tickers = sorted(set(t.strip().upper() for t in tickers_input.split(",") if t.strip()))
 
-if not run_button:
+if run_button:
+    st.session_state["analysis_run"] = True
+
+if not st.session_state.get("analysis_run", False):
     st.info("Enter tickers in the sidebar and click **Run analysis** to begin.")
     st.stop()
 
@@ -45,10 +47,21 @@ if len(tickers) > 15:
     st.error("Please limit to 15 tickers or fewer — larger portfolios slow down news collection significantly.")
     st.stop()
 
+# Sidebar — Stress Test simulator
+st.sidebar.markdown("---")
+st.sidebar.header("Stress Test Simulator")
+st.sidebar.caption("Override live signals to simulate a hypothetical scenario")
 
-# ─────────────────────────
+stress_test_enabled = st.sidebar.checkbox("Enable stress test mode")
+
+if stress_test_enabled:
+    sim_vix = st.sidebar.slider("VIX level", 10, 90, 20)
+    sim_corr = st.sidebar.slider("Sector correlation", 0.0, 1.0, 0.4)
+    sim_sentiment = st.sidebar.slider("News sentiment", -1.0, 1.0, 0.0, 0.1)
+    sim_spread_inverted = st.sidebar.checkbox("Treasury spread inverted (recession signal)")
+    sim_regime = st.sidebar.radio("Market regime", ["Normal", "Elevated", "Crisis"], horizontal=True)
+
 # Step 1 — Fetch data
-# ─────────────────────────
 try:
     with st.spinner("Fetching price and macro data..."):
         prices = fetch_prices(tickers, start_date="2020-01-01")
@@ -82,9 +95,7 @@ if len(returns) < 60:
 st.success(f"Data loaded: {prices.shape[0]} trading days, {len(tickers)} tickers")
 
 
-# ─────────────────────────
 # Step 2 — Risk metrics per ticker
-# ─────────────────────────
 st.header("1. Risk metrics")
 
 metrics_rows = []
@@ -104,9 +115,7 @@ metrics_df = pd.DataFrame(metrics_rows).set_index("Ticker")
 st.dataframe(metrics_df, use_container_width=True)
 
 
-# ─────────────────────────
 # Step 3 — Regime detection
-# ─────────────────────────
 st.header("2. Market regime detection")
 
 try:
@@ -130,9 +139,7 @@ except Exception as e:
     regime_label = REGIME_LABELS[1]
 
 
-# ─────────────────────────
 # Step 4 — News sentiment (keyword-based)
-# ─────────────────────────
 st.header("3. News sentiment")
 
 sentiment_scores = {t: 0.0 for t in tickers}
@@ -154,9 +161,7 @@ else:
     st.dataframe(sentiment_df, use_container_width=True)
 
 
-# ─────────────────────────
 # Step 5 — Combined risk score + Copula amplification
-# ─────────────────────────
 st.header("4. Combined risk score")
 
 try:
@@ -201,9 +206,7 @@ except Exception as e:
     st.stop()
 
 
-# ─────────────────────────
 # Step 6 — Idiosyncratic risk + dynamic allocation
-# ─────────────────────────
 st.header("5. Dynamic asset allocation")
 
 idiosyncratic_risk = {}
@@ -234,4 +237,46 @@ try:
 except Exception as e:
     st.error(f"Could not compute dynamic allocation: {e}")
 
-    
+
+# Step 7 — Stress Test simulation
+if stress_test_enabled:
+    st.header("6. Stress test simulation")
+    st.caption("These results use the slider values above instead of live market data.")
+
+    regime_map = {"Normal": 0, "Elevated": 1, "Crisis": 2}
+    sim_regime_val = regime_map[sim_regime]
+
+    # Use current portfolio volatility as a stand-in (kept from live data)
+    sim_port_vol = port_vol
+
+    sim_spread = -0.1 if sim_spread_inverted else 0.3
+
+    sim_base_score = calculate_combined_risk_score(
+        sim_sentiment, sim_vix, sim_port_vol, sim_spread, sim_regime_val
+    )
+    sim_copula_score = copula_risk_amplifier(sim_base_score, sim_regime_val, sim_vix)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Simulated base score", f"{sim_base_score:.3f}")
+    col2.metric("Simulated Copula score", f"{sim_copula_score:.3f}",
+                delta=f"{sim_copula_score - sim_base_score:+.3f}")
+    col3.metric("Simulated regime", sim_regime)
+
+    if sim_copula_score >= 0.5:
+        st.error(f"Stress scenario would trigger a High Risk alert")
+    elif sim_copula_score >= 0.3:
+        st.warning(f"Stress scenario would trigger a Caution alert")
+    else:
+        st.success(f"Stress scenario remains Stable")
+
+    # Show hypothetical allocation under this scenario
+    sim_combined_risk, sim_weights = dynamic_allocation(
+        sim_copula_score, idiosyncratic_risk, sim_regime_val
+    )
+
+    st.subheader("Simulated allocation under this scenario")
+    sim_weights_df = pd.Series(sim_weights, name="Weight").sort_values(ascending=False)
+    st.bar_chart(sim_weights_df)
+
+    for asset, w in sorted(sim_weights.items(), key=lambda x: -x[1]):
+        st.write(f"**{asset}**: {w*100:.1f}%")
