@@ -110,6 +110,7 @@ SentriVaR-500/
 │   └── 09_backtest.ipynb            # Case study validation (3 real shocks)
 │   ├── 10_copular_formal.ipynb      # Formal Gaussian copula validation
 │   └── 11_strategy_backtest.ipynb   # Strategy vs benchmark performance backtest
+│   └── 12_recovery_detection.ipynb  # Crisis-exit detection speed (exploratory, method-sensitive)
 ├── app/
 │   ├── app.py                       # Streamlit dashboard (live, any tickers)
 │   └── risk_engine.py               # Reusable calculation functions
@@ -125,6 +126,7 @@ SentriVaR-500/
 - **Copula amplification**: rather than a full copula fit, the project uses a simplified stand-in — a regime-conditional exponential amplification (`vix_factor ** 1.5` in Crisis) — that reproduces the tail-dependence *behavior* (signals compounding rather than adding) without the estimation overhead of a true copula model. This tradeoff is intentional and documented rather than disguised.
 - **Idiosyncratic risk**: SOXX (an ETF) has no single-company earnings/insider data, so it's assigned a neutral 0.5 idiosyncratic score by design — reflecting that diversified vehicles genuinely carry less name-specific risk, not a data gap being papered over.
 - **Treasury spread signal**: initially modeled as a binary flag (inverted vs. not), later refined to a continuous risk measure (`max(0, min(1, -spread / 2))`) so that the depth of the inversion — not just its presence — contributes proportionally to the combined risk score.
+- **Recovery detection**: `12_recovery_detection.ipynb` explores the symmetric question — how quickly the system detects a Crisis-to-recovery transition, as a counterpart to the crisis-entry lead time in `09_backtest.ipynb`. Unlike crisis onset (a clear risk-score threshold crossing), "recovery" proved highly sensitive to how the price bottom is defined: naive minimum-price detection, shorter regime smoothing, and sustained-trend confirmation each produced meaningfully different lead times (14.8, 17.9, and 34.0 days respectively). This instability is itself a finding — recovery is a fuzzier concept than crisis onset, and a more robust approach would likely define recovery via the same threshold-crossing logic used for crisis detection, rather than inferring it from price action.
 ---
 
 ## Limitations / next steps
