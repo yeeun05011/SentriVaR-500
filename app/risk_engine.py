@@ -229,7 +229,7 @@ def calculate_combined_risk_score(sentiment_score, vix, port_vol, spread, regime
     """
     vix_norm = min(vix / 80, 1.0)
     sentiment_norm = (1 - sentiment_score) / 2
-    spread_risk = 1 if spread < 0 else 0
+    spread_risk = max(0, min(1, -spread / 2))
 
     if regime == 0:
         weights = {"sentiment": 0.40, "vix": 0.25, "vol": 0.25, "spread": 0.10}
@@ -374,7 +374,7 @@ def explain_risk_score(sentiment_score, vix, port_vol, spread, regime):
     """
     vix_norm = min(vix / 80, 1.0)
     sentiment_norm = (1 - sentiment_score) / 2
-    spread_risk = 1 if spread < 0 else 0
+    spread_risk = max(0, min(1, -spread / 2))
     vol_term = abs(port_vol) * 10
 
     if regime == 0:
