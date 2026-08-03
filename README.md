@@ -27,7 +27,7 @@ An interactive version of this system is deployed with Streamlit — enter any t
 
 **[Live app →](https://sentrivar-500-7wjxew8z8yhhrad5ruidgw.streamlit.app/)**
 
-The app (`app/app.py`, backed by `app/risk_engine.py`) re-runs the full pipeline — regime detection, sentiment, Copula amplification, idiosyncratic risk, and allocation — on whatever tickers the user enters, refitting the HMM and pulling fresh data each time. News sentiment in the live app uses a fast keyword-based scorer instead of FinBERT, trading a small amount of accuracy for near-instant response time.
+The app (`app/app.py`, backed by `app/risk_engine.py`) re-runs the full pipeline — regime detection, sentiment, Copula amplification, idiosyncratic risk, and allocation — on whatever tickers the user enters, refitting the HMM and pulling fresh data each time. News sentiment in the live app uses a fast keyword-based scorer instead of FinBERT, trading a small amount of accuracy for near-instant response time. The app also includes an interactive **Stress Test Simulator** in the sidebar — override live VIX, sector correlation, sentiment, and regime with slider inputs to see how the risk score, alert level, and recommended allocation would respond to a hypothetical scenario, without needing to wait for a real market event.
 
 ---
 
@@ -55,7 +55,29 @@ In the Crisis regime, the Copula-amplified risk score saturates to its maximum (
 
 Portfolio composition (SOXX, a semiconductor ETF) showed distinctly different behavior across shocks — surging +61% during the 2026 Iran conflict window even as JPM and AAPL were roughly flat or negative, illustrating why sector-level idiosyncratic signals matter for allocation, not just headline VIX.
 
----
+### Formal Copula Validation
+
+To validate the heuristic Copula-inspired amplifier used in `07_copula_risk.ipynb`, `10_copular_formal.ipynb` fits an actual Gaussian copula on rank-transformed (pseudo-observation) returns, separately for each regime:
+
+| Regime | Avg. pairwise Gaussian copula correlation |
+|---|---|
+| Normal | 0.373 |
+| Elevated | 0.498 |
+| Crisis | 0.669 |
+
+Correlation increases **1.79x** from Normal to Crisis — empirical support for the exponential amplification (`vix_factor ** 1.5`) used in the heuristic model, and a demonstration that a full copula fit (not just the simplified stand-in) confirms the same tail-convergence behavior.
+
+### Strategy Backtest: Risk-Adaptive vs Equal-Weight
+
+`11_strategy_backtest.ipynb` simulates actual portfolio performance using the daily Copula risk score to drive a cash/equity split (with a 1-day lag to avoid look-ahead bias), compared against a static equal-weight benchmark with no rebalancing:
+
+| Metric | Risk-Adaptive Strategy | Equal-Weight Benchmark |
+|---|---|---|
+| Total Return | 409.8% | 559.6% |
+| Sharpe Ratio | **1.161** | 1.025 |
+| Max Drawdown | **-26.0%** | -32.7% |
+
+The strategy trades some upside for a materially better risk-adjusted return and a shallower drawdown — the expected behavior of a risk-management overlay rather than a return-maximizing strategy.
 
 ## Data sources
 
@@ -86,6 +108,8 @@ SentriVaR-500/
 │   ├── 07_copula_risk.ipynb         # Non-linear tail-risk amplification
 │   ├── 08_allocation.ipynb          # Idiosyncratic risk + dynamic allocation
 │   └── 09_backtest.ipynb            # Case study validation (3 real shocks)
+│   ├── 10_copular_formal.ipynb      # Formal Gaussian copula validation
+│   └── 11_strategy_backtest.ipynb   # Strategy vs benchmark performance backtest
 ├── app/
 │   ├── app.py                       # Streamlit dashboard (live, any tickers)
 │   └── risk_engine.py               # Reusable calculation functions
