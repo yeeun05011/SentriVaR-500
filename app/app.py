@@ -254,6 +254,10 @@ if stress_test_enabled:
     sim_base_score = calculate_combined_risk_score(
         sim_sentiment, sim_vix, sim_port_vol, sim_spread, sim_regime_val
     )
+
+    correlation_adjustment = (sim_corr - 0.4) * 0.2  # 0.4 = rough "normal" baseline
+    sim_base_score = max(0, min(1.0, sim_base_score + correlation_adjustment))
+
     sim_copula_score = copula_risk_amplifier(sim_base_score, sim_regime_val, sim_vix)
 
     col1, col2, col3 = st.columns(3)
