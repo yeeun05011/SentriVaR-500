@@ -273,6 +273,18 @@ if stress_test_enabled:
     else:
         st.success(f"Stress scenario remains Stable")
 
+    # Explainability for the simulated scenario
+    sim_contributions = explain_risk_score(sim_sentiment, sim_vix, sim_port_vol, sim_spread, sim_regime_val)
+    sim_contrib_df = pd.Series(sim_contributions, name="Contribution").sort_values(ascending=False)
+
+    st.subheader("What's driving this simulated score?")
+    st.bar_chart(sim_contrib_df)
+    st.caption(
+        "Contribution breakdown for the hypothetical scenario above. "
+        "Note: sector correlation is applied as a separate adjustment "
+        "and is not part of this per-signal decomposition."
+    )
+
     # Show hypothetical allocation under this scenario
     sim_combined_risk, sim_weights = dynamic_allocation(
         sim_copula_score, idiosyncratic_risk, sim_regime_val
