@@ -53,7 +53,7 @@ Most retail-level risk projects only model the first layer. Combining all three,
 
 In the Crisis regime, the Copula-amplified risk score saturates to its maximum (1.0) well before the naive linear score does — during the 2020 COVID crash, for example, the amplified score hits 1.0 while the linear score peaks around 0.94, several trading days earlier in the drawdown.
 
-Portfolio composition (SOXX, a semiconductor ETF) showed distinctly different behavior across shocks — surging +61% during the 2026 Iran conflict window even as JPM and AAPL were roughly flat or negative, illustrating why sector-level idiosyncratic signals matter for allocation, not just headline VIX.
+Portfolio composition (SOXX, a semiconductor ETF) showed distinctly different behavior across shocks — surging +61% during the 2026 Iran conflict window even as JPM and AAPL were roughly flat or negative, illustrating why sector-level idiosyncratic signals matter for allocation, not just headline VIX. The risk-scoring engine has also been iteratively refined — for example, the Treasury spread signal was upgraded from a binary inversion flag to a continuous measure of inversion depth, improving the granularity of the "What's driving this score?" breakdown in the live app.
 
 ### Formal Copula Validation
 
@@ -110,6 +110,7 @@ SentriVaR-500/
 │   └── 09_backtest.ipynb            # Case study validation (3 real shocks)
 │   ├── 10_copular_formal.ipynb      # Formal Gaussian copula validation
 │   └── 11_strategy_backtest.ipynb   # Strategy vs benchmark performance backtest
+│   └── 12_recovery_detection.ipynb  # Crisis-exit detection speed (exploratory, method-sensitive)
 ├── app/
 │   ├── app.py                       # Streamlit dashboard (live, any tickers)
 │   └── risk_engine.py               # Reusable calculation functions
@@ -124,14 +125,14 @@ SentriVaR-500/
 - **Regime detection**: `GaussianHMM` (3 components) on standardized returns, 20-day rolling volatility, and VIX, with a 30-day smoothing filter and regimes auto-labeled by mean VIX (lowest → Normal, highest → Crisis) rather than assumed a priori.
 - **Copula amplification**: rather than a full copula fit, the project uses a simplified stand-in — a regime-conditional exponential amplification (`vix_factor ** 1.5` in Crisis) — that reproduces the tail-dependence *behavior* (signals compounding rather than adding) without the estimation overhead of a true copula model. This tradeoff is intentional and documented rather than disguised.
 - **Idiosyncratic risk**: SOXX (an ETF) has no single-company earnings/insider data, so it's assigned a neutral 0.5 idiosyncratic score by design — reflecting that diversified vehicles genuinely carry less name-specific risk, not a data gap being papered over.
-
+- **Treasury spread signal**: initially modeled as a binary flag (inverted vs. not), later refined to a continuous risk measure (`max(0, min(1, -spread / 2))`) so that the depth of the inversion — not just its presence — contributes proportionally to the combined risk score.
+- **Recovery detection**: `12_recovery_detection.ipynb` explores the symmetric question — how quickly the system detects a Crisis-to-recovery transition, as a counterpart to the crisis-entry lead time in `09_backtest.ipynb`. Unlike crisis onset (a clear risk-score threshold crossing), "recovery" proved highly sensitive to how the price bottom is defined: naive minimum-price detection, shorter regime smoothing, and sustained-trend confirmation each produced meaningfully different lead times (14.8, 17.9, and 34.0 days respectively). This instability is itself a finding — recovery is a fuzzier concept than crisis onset, and a more robust approach would likely define recovery via the same threshold-crossing logic used for crisis detection, rather than inferring it from price action.
 ---
 
 ## Limitations / next steps
 
 - Case studies use a small, fixed asset universe (4 large-caps + 1 sector ETF); results may not generalize to small-caps or less liquid names.
 - SEC EDGAR full-text insider parsing was attempted but proved unreliable for structured extraction; the project falls back to `yfinance`'s `insider_transactions` with a sell-acceleration heuristic instead.
-- A future iteration could add: SHAP-based attribution for *which* signal drove a given alert, a live Streamlit dashboard, and a proper Gaussian/Student-t copula fit in place of the current amplification heuristic.
 
 ---
 
